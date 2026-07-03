@@ -9,8 +9,8 @@ import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer
    ========================================================================= */
 
 const supabaseConfig = {
-  url: "PASTE_SUPABASE_PROJECT_URL_HERE",
-  anonKey: "PASTE_SUPABASE_ANON_KEY_HERE",
+  url: "https://xfcamhldlyioxrznuncz.supabase.co",
+  anonKey: "sb_publishable_gzd4FRyhqa-Ik4pysBmoFQ_RhVdxgOt",
   table: "revolucioni_flamingo_players"
 };
 

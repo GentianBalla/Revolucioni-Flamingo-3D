@@ -32,11 +32,11 @@ const palettes = {
 const maleNames = ["Endi Demneri", "Gentian Balla"];
 
 const gameSeconds = 60;
-const gravity = -13;
-const baseSpeed = 10.4;
+const gravity = -6.4;
+const baseSpeed = 15;
 const maxChargeMs = 1100;
-const arenaFar = { x: -12.5, z: 0 };
-const playerOrigin = new THREE.Vector3(7.6, 1.6, 0);
+const arenaFar = { x: -6.5, z: 0 };
+const playerOrigin = new THREE.Vector3(5.6, 1.6, 0);
 
 /* ---------------------------------------------------------------------- */
 /* DOM references                                                          */
@@ -128,7 +128,7 @@ labelRenderer.domElement.style.pointerEvents = 'none';
 labelsRoot.appendChild(labelRenderer.domElement);
 
 const scene = new THREE.Scene();
-scene.fog = new THREE.FogExp2(0x0a0e1c, 0.035);
+scene.fog = new THREE.FogExp2(0x0a0e1c, 0.022);
 
 const camera = new THREE.PerspectiveCamera(58, window.innerWidth / window.innerHeight, 0.1, 200);
 camera.position.copy(playerOrigin);
@@ -190,7 +190,7 @@ function buildEnvironment() {
   const hemi = new THREE.HemisphereLight(0xffd6e8, 0x0d1024, 0.85);
   scene.add(hemi);
 
-  const key = new THREE.DirectionalLight(0xffe7c2, 1.15);
+  const key = new THREE.DirectionalLight(0xffe7c2, 1.4);
   key.position.set(6, 9, 4);
   scene.add(key);
 
@@ -201,6 +201,14 @@ function buildEnvironment() {
   const rim2 = new THREE.PointLight(0x3fe7c9, 1.4, 22, 2);
   rim2.position.set(-2, 3.5, -7);
   scene.add(rim2);
+
+  const stageWashA = new THREE.PointLight(0xfff2d6, 2.4, 16, 1.8);
+  stageWashA.position.set(-6.5, 5, -5);
+  scene.add(stageWashA);
+
+  const stageWashB = new THREE.PointLight(0xfff2d6, 2.4, 16, 1.8);
+  stageWashB.position.set(-6.5, 5, 5);
+  scene.add(stageWashB);
 
   const floor = new THREE.Mesh(
     new THREE.PlaneGeometry(60, 40),
@@ -231,7 +239,7 @@ function buildStage() {
   for (let i = 0; i < 3; i++) {
     const ring = new THREE.Mesh(new THREE.RingGeometry(3.2 + i * 3.6, 3.35 + i * 3.6, 48), ringMat);
     ring.rotation.x = -Math.PI / 2;
-    ring.position.set(-12.5, 0.01, 0);
+    ring.position.set(arenaFar.x, 0.01, 0);
     scene.add(ring);
   }
 }
@@ -464,37 +472,42 @@ function applyAvatarToCharacter(group, avatar) {
 /* Targets (colleagues in the arena)                                       */
 /* ---------------------------------------------------------------------- */
 function clearTargets() {
-  targets.forEach((t) => scene.remove(t.group));
+  targets.forEach((t) => { scene.remove(t.group); t.tagEl.remove(); });
   targets.length = 0;
 }
 
 function placeTargets(names) {
   clearTargets();
-  const cols = 4;
+  const cols = 6;
   names.forEach((name, index) => {
     const col = index % cols;
     const row = Math.floor(index / cols);
-    const jitterX = (Math.random() - 0.5) * 1.1;
-    const jitterZ = (Math.random() - 0.5) * 1.1;
-    const x = arenaFar.x - row * 2.6 + jitterX;
-    const z = -5.2 + col * 3.3 + jitterZ;
+    const jitterX = (Math.random() - 0.5) * 0.6;
+    const jitterZ = (Math.random() - 0.5) * 0.7;
+    const x = arenaFar.x - row * 1.8 + jitterX;
+    const z = -6 + col * 2.4 + jitterZ;
 
     const avatar = getAvatar(name);
     const group = makeCharacter(avatar);
     group.position.set(x, 0, z);
-    group.lookAt(playerOrigin.x, group.userData.headTop, 0);
+    group.scale.setScalar(1.3);
+    group.lookAt(playerOrigin.x, 1.4, 0);
     group.userData.baseY = 0;
     group.userData.phase = Math.random() * Math.PI * 2;
     scene.add(group);
+
+    const hitAnchor = new THREE.Object3D();
+    hitAnchor.position.set(0, group.userData.headTop * 0.9, 0);
+    group.add(hitAnchor);
 
     const tagEl = document.createElement('div');
     tagEl.className = 'css2d-tag';
     tagEl.textContent = displayName(name);
     const tag = new CSS2DObject(tagEl);
-    tag.position.set(0, group.userData.headTop + 0.42, 0);
+    tag.position.set(0, group.userData.headTop + 0.45, 0);
     group.add(tag);
 
-    targets.push({ group, name, hit: false, radius: 0.62, tagEl });
+    targets.push({ group, name, hit: false, radius: 1.05, tagEl, hitAnchor });
   });
 }
 
@@ -561,7 +574,7 @@ function throwEgg(power) {
   const handWorld = new THREE.Vector3();
   handAnchor.getWorldPosition(handWorld);
 
-  const dir = target.sub(handWorld).normalize();
+  const dir = target.sub(camera.position).normalize();
   const speed = baseSpeed * power;
 
   const mesh = new THREE.Mesh(eggGeo, eggMat.clone());
@@ -599,8 +612,7 @@ function updateProjectiles(dt) {
     for (const t of targets) {
       if (t.hit) continue;
       const anchor = new THREE.Vector3();
-      t.group.getWorldPosition(anchor);
-      anchor.y += t.group.userData.headTop * 0.72;
+      t.hitAnchor.getWorldPosition(anchor);
       if (p.mesh.position.distanceTo(anchor) < t.radius) { hitTarget = t; break; }
     }
 
@@ -650,7 +662,7 @@ function registerHit(target, worldPos) {
     group.position.y = -0.5 * t;
     group.scale.setScalar(1 - 0.3 * t);
     if (t < 1) requestAnimationFrame(fall);
-    else scene.remove(group);
+    else { scene.remove(group); target.tagEl.remove(); }
   };
   requestAnimationFrame(fall);
 
